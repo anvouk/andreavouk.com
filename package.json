@@ -1,0 +1,20 @@
+{
+  "name": "andreavouk.com",
+  "version": "0.0.1",
+  "private": true,
+  "author": {
+    "name": "Andrea Vouk",
+    "email": "andrew.vouk@gmail.com",
+    "url": "https://andreavouk.com"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "astro": "^0.20.12",
+    "@astrojs/renderer-svelte": "^0.1.2"
+  }
+}
