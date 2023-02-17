@@ -1,0 +1,9 @@
+# ignore all files except js and ts
+
+*.*
+node_modules
+dist
+
+!*.js
+!*.ts
+!*.astro
