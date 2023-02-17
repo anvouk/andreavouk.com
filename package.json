@@ -1,0 +1,22 @@
+{
+  "name": "andreavouk.com",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/rss": "^2.1.0",
+    "@astrojs/sitemap": "^1.0.1",
+    "astro": "^2.0.13"
+  },
+  "volta": {
+    "node": "18.14.1",
+    "yarn": "1.22.19"
+  }
+}
