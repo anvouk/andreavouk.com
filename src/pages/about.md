@@ -6,4 +6,36 @@ description: "About Andrea Vouk"
 
 My name is Andrea Vouk (He/His) and I'm a professional software developer based in Italy.
 
-I'm an OSS contributor and I like creating and breaking stuff.
+I'm self-taught through books and the internet, and I'm very passionate about building stuff.
+
+These days, I mainly code in TypeScript and Python3, but I'm also proficient in Java, C# (.NET 6+) and classic old school C.
+
+Stuff that I build includes backend systems, desktop native GUIs (Qt/Wpf) and other
+random stuff (shell scripts, libs, etc.). Also, if something can be containerized, be sure that it will be :)
+
+I have decent SRE (k8s), SysAdmin (Linux based, ESXi) and DevOps (Packer, Ansible) skills but these are not roles
+that excite me much, rather something that I've had to learn along the road for necessity.
+I still enjoy them though, sometimes...
+
+I'm always open to collaborate on interesting projects, so feel free to reach out.
+
+## Licenses
+
+- This website's source code is under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html)
+- All the articles and text are under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) unless stated
+otherwise.
+- Brand's icons (e.g. GitHub's logo, etc.) are under their respective licenses.
+
+## Website info
+
+The source code for this website is publicly available here: https://github.com/anvouk/andreavouk.com.
+
+### Hosting
+- [Netlify](https://www.netlify.com/) is used as hosting provider.
+- [CloudFlare](https://www.cloudflare.com/) is used as domain registrar, caching and spam protection.
+
+### Software
+- [Astro](https://astro.build/) is used for building the website.
+- Astro plugins for RSS feeds and sitemap.
+- [Bootstrap Icons](https://icons.getbootstrap.com/) is used mainly for brand's icons.
+- [TypeScript](https://www.typescriptlang.org/) because we all know how JavaScript can be painful.
