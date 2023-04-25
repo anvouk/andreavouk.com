@@ -4,16 +4,26 @@ import HeaderLink from "./HeaderLink.astro";
 
 <header>
   <nav>
-    <HeaderLink href="/">Home</HeaderLink>
-    <HeaderLink href="/blog">Blog</HeaderLink>
-    <HeaderLink href="/about">About</HeaderLink>
-    <HeaderLink href="https://github.com/anvouk" target="_blank">GitHub</HeaderLink>
-    <HeaderLink href="https://gitlab.com/anvouk" target="_blank">GitLab</HeaderLink>
-    <HeaderLink href="https://sr.ht/~anvouk/" target="_blank">SourceHut</HeaderLink>
+    <div>
+      <HeaderLink href="/">Home</HeaderLink>|
+      <HeaderLink href="/blog">Blog</HeaderLink>|
+      <HeaderLink href="/about">About</HeaderLink>|
+      <HeaderLink href="/contacts">Contacts</HeaderLink>
+    </div>
+    <div>
+      <HeaderLink class="bi bi-key-fill" href="/publickey.txt"></HeaderLink>
+      <HeaderLink class="bi bi-rss-fill" href="/rss.xml"></HeaderLink>
+    </div>
   </nav>
 </header>
 
 <style>
+  nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
   header {
     margin: 0em 0 2em;
   }

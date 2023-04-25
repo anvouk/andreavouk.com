@@ -25,7 +25,7 @@ faucibus orci luctus et ultrices posuere cubilia curae; Etiam eget massa diam. V
 ultricies. Mauris fermentum est a enim euismod, vitae fringilla est vulputate. In est diam, vestibulum a leo vel,
 pretium lobortis nisl. Morbi a condimentum nisl.
 
-```js
+```ts
 import './app.css';
 import App from './App.svelte';
 

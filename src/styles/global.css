@@ -1,12 +1,15 @@
 @import 'https://fonts.googleapis.com/css?family=Roboto:300,400,500';
 @import 'https://fonts.googleapis.com/css?family=JetBrains%20Mono:300,400,500';
 @import 'https://fonts.googleapis.com/css?family=Source%20Code%20Pro:300,400,500';
+@import 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.4/font/bootstrap-icons.css';
 
 :root {
   color-scheme: dark;
 
+  --default-font-size: 18px;
+
   --drop-color: #181a1b;
-  --drop-2-color: #0c0d0e;
+  --drop-2-color: rgba(14, 14, 14, 0.5);
 
   --primary-color: #00272f;
   --secondary-text-color: #bbbbbb;
@@ -34,8 +37,9 @@ body {
   margin: 0 auto;
   max-width: 50em;
   font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-size: var(--default-font-size);
   line-height: 1.6;
-  padding: 4em 1em;
+  padding: 1em 1.5em 1em 1.5em;
   background-color: var(--drop-2-color);
   color: var(--secondary-text-color);
 }
@@ -88,4 +92,14 @@ nav a {
   line-height: 1.6;
   letter-spacing: 0.1em;
   padding-right: 0.2em;
+}
+
+i {
+  font-size: 1.8em;
+}
+
+i span,
+i a {
+  padding-left: 0.5em;
+  font-size: var(--default-font-size);
 }
