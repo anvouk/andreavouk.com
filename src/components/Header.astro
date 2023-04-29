@@ -5,14 +5,14 @@ import HeaderLink from "./HeaderLink.astro";
 <header>
   <nav>
     <div>
-      <HeaderLink href="/">Home</HeaderLink>|
-      <HeaderLink href="/blog">Blog</HeaderLink>|
-      <HeaderLink href="/about">About</HeaderLink>|
-      <HeaderLink href="/contacts">Contacts</HeaderLink>
+      <HeaderLink href="/" label="home">Home</HeaderLink>|
+      <HeaderLink href="/blog" label="blog">Blog</HeaderLink>|
+      <HeaderLink href="/about" label="about">About</HeaderLink>|
+      <HeaderLink href="/contacts" label="contacts">Contacts</HeaderLink>
     </div>
     <div>
-      <HeaderLink class="bi bi-key-fill" href="/publickey.txt"></HeaderLink>
-      <HeaderLink class="bi bi-rss-fill" href="/rss.xml"></HeaderLink>
+      <HeaderLink class="bi bi-key-fill" href="/publickey.txt" label="public pgp key"></HeaderLink>
+      <HeaderLink class="bi bi-rss-fill" href="/rss.xml" label="rss feeds"></HeaderLink>
     </div>
   </nav>
 </header>

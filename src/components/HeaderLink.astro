@@ -1,11 +1,11 @@
 ---
-const { href, class: className } = Astro.props;
+const { href, label, class: className } = Astro.props;
 
 const { pathname } = Astro.url;
 const isActive = href === pathname || href === pathname.replace(/\/$/, '');
 ---
 
-<a href={href} class:list={[className, { active: isActive }]}>
+<a href={href} aria-label={label} class:list={[className, { active: isActive }]}>
   <slot />
 </a>
 
