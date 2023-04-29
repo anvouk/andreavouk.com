@@ -4,6 +4,7 @@ title: "First post"
 description: "Lorem ipsum dolor sit amet"
 pubDate: "2022/04/10"
 updatedDate: "2024/04/10"
+tags: ["containers", "containerd", "docker", "kubernets", "k3s"]
 ---
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
