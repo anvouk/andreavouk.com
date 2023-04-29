@@ -62,16 +62,16 @@ strong {
 code,
 pre {
   color: var(--background-color-code-3);
-  font-family: 'JetBrains Mono', 'Source Code Pro', 'Monospaced', monospace;
+  font-family: 'Source Code Pro', 'Monospaced', monospace;
 }
 
 pre {
-  border-left: 1px solid var(--secondary-details-color);
-  padding-left: 0.4em;
+  padding: 0.5em;
   font-size: 0.9em;
   word-wrap: normal;
   overflow-x: auto;
   white-space: pre;
+  border-radius: 0.2em;
 }
 
 a {
