@@ -6,9 +6,7 @@ export async function get(context) {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     site: context.site,
-    items: await pagesGlobToRssItems(
-      import.meta.glob("./blog/**/*.{md,mdx}"),
-    ),
+    items: await pagesGlobToRssItems(import.meta.glob("./blog/**/*.{md,mdx}")),
     customData: `<language>en-us</language>`,
   });
 }

@@ -8,19 +8,21 @@ import { SITE_TITLE, SITE_DESCRIPTION } from "../config";
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+  <BaseHead isArticle=false title={SITE_TITLE} description={SITE_DESCRIPTION} />
 </head>
 <body>
 <Header title={SITE_TITLE} />
 <main>
-  <h1>Welcome</h1>
-
-  <p>
-    Hi, welcome to my little place on the internet.
-  </p>
-  <p>
-    There's not much to see right now but I have more content planned.
-  </p>
+  <div class="d-flex flex-column align-items-center pt-4">
+    <h1>Welcome</h1>
+    <div class="col-10 mt-4">
+      <p style="text-align: center">
+        Hi, welcome to my little place on the internet.
+        <br><br>
+        More content coming soon...
+      </p>
+    </div>
+  </div>
 
 </main>
 <div id="footer">

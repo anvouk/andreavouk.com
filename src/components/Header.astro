@@ -2,33 +2,17 @@
 import HeaderLink from "./HeaderLink.astro";
 ---
 
-<header>
-  <nav>
+<header class="mb-4">
+  <nav class="d-flex flex-wrap justify-content-between">
     <div>
-      <HeaderLink href="/">Home</HeaderLink>|
-      <HeaderLink href="/blog">Blog</HeaderLink>|
-      <HeaderLink href="/about">About</HeaderLink>|
-      <HeaderLink href="/contacts">Contacts</HeaderLink>
+      <span class="me-1"><HeaderLink href="/" label="home">/home</HeaderLink></span>
+      <span class="me-1"><HeaderLink href="/blog" label="blog">/blog</HeaderLink></span>
+      <span class="me-1"><HeaderLink href="/about" label="about">/about</HeaderLink></span>
+      <span class="me-3"><HeaderLink href="/contacts" label="contacts">/contacts</HeaderLink></span>
     </div>
     <div>
-      <HeaderLink class="bi bi-key-fill" href="/publickey.txt"></HeaderLink>
-      <HeaderLink class="bi bi-rss-fill" href="/rss.xml"></HeaderLink>
+      <span class="me-1"><HeaderLink class="bi bi-key-fill" href="/publickey.txt" label="public pgp key"></HeaderLink></span>
+      <span><HeaderLink class="bi bi-rss-fill" href="/rss.xml" label="rss feeds"></HeaderLink></span>
     </div>
   </nav>
 </header>
-
-<style>
-  nav {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-  }
-
-  header {
-    margin: 0em 0 2em;
-  }
-
-  h2 {
-    margin: 0.5em 0;
-  }
-</style>

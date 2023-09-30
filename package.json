@@ -11,16 +11,15 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/mdx": "^0.17.0",
-    "@astrojs/rss": "^2.1.0",
-    "@astrojs/sitemap": "^1.0.1",
-    "astro": "^2.0.13"
+    "@astrojs/mdx": "^1.1.0",
+    "@astrojs/rss": "^3.0.0",
+    "@astrojs/sitemap": "^3.0.0",
+    "astro": "^3.2.0"
   },
   "devDependencies": {
-    "prettier": "^2.8.4"
+    "prettier": "^3.0.3"
   },
   "volta": {
-    "node": "18.14.1",
-    "yarn": "1.22.19"
+    "node": "18.18.0"
   }
 }

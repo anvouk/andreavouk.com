@@ -5,15 +5,13 @@ import Footer from "../components/Footer.astro";
 import { SITE_TITLE, SITE_DESCRIPTION } from "../config";
 
 // Use Astro.glob() to fetch all posts, and then sort them by date.
-const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
-  (a, b) => new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf(),
-);
+const posts = [];
 ---
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+  <BaseHead isArticle=false title={SITE_TITLE} description={SITE_DESCRIPTION} />
   <style>
     ul {
       list-style-type: none;
@@ -38,9 +36,8 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
 <body>
 <Header />
 <main>
+  <h4 class="d-flex justify-content-center">Coming Soon...</h4>
   <section>
-    <h2 style="text-align: center;">Coming soon</h2>
-    <!--
     <ul>
       {posts.map((post) => (
         <li>
@@ -55,7 +52,6 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
         </li>
       ))}
     </ul>
-    -->
   </section>
 </main>
 <Footer />

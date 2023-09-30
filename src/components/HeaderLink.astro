@@ -1,22 +1,23 @@
 ---
-const { href, class: className } = Astro.props;
+const { href, label, class: className } = Astro.props;
 
 const { pathname } = Astro.url;
 const isActive = href === pathname || href === pathname.replace(/\/$/, '');
 ---
 
-<a href={href} class:list={[className, { active: isActive }]}>
+<a href={href} aria-label={label} class:list={[className, { active: isActive }]}>
   <slot />
 </a>
 
 <style>
   a {
+    font-size: var(--default-font-size);
     display: inline-block;
     text-decoration: none;
+    font-style: italic;
   }
 
   a.active {
     font-weight: bolder;
-    text-decoration: underline;
   }
 </style>

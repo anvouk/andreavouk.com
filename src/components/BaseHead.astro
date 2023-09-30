@@ -4,11 +4,14 @@
 import "../styles/global.css";
 
 export interface Props {
+  isArticle: boolean;
   title: string;
-  description: string;
+  description?: string;
+  keywords?: string[];
 }
 
-const { title, description } = Astro.props;
+const { isArticle, title, description, keywords } = Astro.props;
+const pageType = isArticle ? 'article' : 'website';
 ---
 
 <!-- Global Metadata -->
@@ -24,12 +27,15 @@ const { title, description } = Astro.props;
 <title>{title}</title>
 <meta name="title" content={title} />
 <meta name="description" content={description} />
+{keywords && <meta name="keywords" content={keywords.join(',')} />}
+<meta name="color-scheme" content="dark" />
 
 <!-- Open Graph -->
-<meta property="og:type" content="website" />
 <meta property="og:url" content={Astro.url} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
+<meta property="og:type" content={pageType} />
+{isArticle && keywords && <meta property="article:tag" content={keywords.join(' ')} />}
 
 <!-- Twitter -->
 <meta property="twitter:url" content={Astro.url} />
