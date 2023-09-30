@@ -22,22 +22,8 @@ const {
 <head>
   <BaseHead isArticle=true title={title} description={description} keywords={tags} />
   <style>
-    .title {
-      font-size: 2.2em;
-      margin: 0.25em 0 0;
-    }
-
     hr {
-      border-top: 1px solid #DDD;
-      margin: 1rem 0;
-      border-top-color: #3A3E41FF;
-    }
-
-    .tag-container {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 0.5em;
+      border-top: 1px solid white;
     }
 
     .tag {
@@ -50,12 +36,12 @@ const {
 <Header />
 <main>
   <article>
-    <h1 class="title">{title}</h1>
+    <h1>{title}</h1>
     {pubDate && <time>{pubDate}</time>}
     {updatedDate && <div>Last updated on: <time>{updatedDate}</time></div>}
-    <div class="tag-container">
+    <div class="d-flex flex-wrap">
       {tags?.map(tag => (
-        <div class="tag"><em>{`#${tag}`}</em></div>
+        <div class="tag me-2"><em>{`#${tag}`}</em></div>
       ))}
     </div>
     <hr />
