@@ -33,6 +33,7 @@ html {
 body {
   margin: 0 auto;
   max-width: 60em;
+  min-height: 100vh;
   font-family: 'Lato', 'Roboto', 'Helvetica', 'Arial', sans-serif;
   font-size: var(--default-font-size);
   line-height: 1.5;

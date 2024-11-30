@@ -8,17 +8,20 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "prepare": "lefthook install"
   },
   "dependencies": {
-    "@astrojs/mdx": "^3.1.6",
-    "@astrojs/rss": "^4.0.7",
-    "@astrojs/sitemap": "^3.1.6",
-    "astro": "^4.15.5",
+    "@astrojs/mdx": "^3.1.9",
+    "@astrojs/rss": "^4.0.9",
+    "@astrojs/sitemap": "^3.2.1",
+    "astro": "^4.16.16",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "prettier": "^3.3.3"
+    "lefthook": "^1.8.4",
+    "prettier": "^3.4.1",
+    "pretty-quick": "^4.0.0"
   },
   "volta": {
     "node": "20.17.0"
