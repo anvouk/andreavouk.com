@@ -6,6 +6,24 @@ pubDate: "2024/09/15"
 tags: ["QEMU", "KVM", "Linux", "Virtualization"]
 ---
 
+## Table Of Contents
+
+- [Table Of Contents](#table-of-contents)
+- [Preamble](#preamble)
+- [1. Installing QEMU from source](#1-installing-qemu-from-source)
+- [2. Running a virtual machine with QEMU](#2-running-a-virtual-machine-with-qemu)
+  - [2.1 QEMU command breakdown](#21-qemu-command-breakdown)
+  - [2.2 Launching the vm & installing the guest OS](#22-launching-the-vm--installing-the-guest-os)
+- [3. Quality of life improvements](#3-quality-of-life-improvements)
+  - [3.1 Expose vm services to outside with SLIRP](#31-expose-vm-services-to-outside-with-slirp)
+  - [3.2 Enable QEMU monitor console](#32-enable-qemu-monitor-console)
+  - [3.3 Enable remote desktop with VNC](#33-enable-remote-desktop-with-vnc)
+  - [3.4 OpenGL acceleration with SDL](#34-opengl-acceleration-with-sdl)
+  - [3.5 Audio pass-through with PipeWire or PulseAudio](#35-audio-pass-through-with-pipewire-or-pulseaudio)
+- [What's Next](#whats-next)
+- [TL;DR](#tldr)
+
+
 ## Preamble
 
 When I decided to start virtualizing vms on Linux with KVM I found myself with 2 interesting options:
