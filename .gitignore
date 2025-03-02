@@ -1,5 +1,6 @@
 .idea
 .vscode
+.astro
 
 *~
 .fuse_hidden*
