@@ -1,0 +1,453 @@
+---
+layout: "../../../../../layouts/BlogPost.astro"
+title: "Replacing Docker with nerdctl stack from scratch"
+description: "Replace Docker with nerdctl stack and keep cli compatibility"
+pubDate: "2025/03/16"
+tags: ["Docker", "Linux", "Containerization"]
+---
+
+## Table Of Contents
+
+- [Table Of Contents](#table-of-contents)
+- [Intro](#intro)
+- [1. Installing nerdctl](#1-installing-nerdctl)
+- [2. Installing Containerd](#2-installing-containerd)
+- [3. Installing the container network interface (CNI)](#3-installing-the-container-network-interface-cni)
+- [4. Installing crun](#4-installing-crun)
+- [5. Installing buildkit](#5-installing-buildkit)
+  - [5.1 Gotchas](#51-gotchas)
+- [6. Post-installation quality of life](#6-post-installation-quality-of-life)
+  - [6.1 Allow `nerdctl` usage from non-root users](#61-allow-nerdctl-usage-from-non-root-users)
+  - [6.2 Alias `nerdctl` to `docker`](#62-alias-nerdctl-to-docker)
+- [7. Final thoughts](#7-final-thoughts)
+- [8. What's next](#8-whats-next)
+
+## Intro
+
+Docker is now over 10 years old! Back then, if you wanted to containerize something on Linux/Windows/Mac, it was the
+best and only option. Fast-forward 2025, [Kubernetes replaced Docker with his own runtime](https://kubernetes.io/blog/2020/12/02/dont-panic-kubernetes-and-docker/),
+[AWS created his own containerization flavor for serverless computing](https://github.com/firecracker-microvm/firecracker) and
+[virtualization isolation has been successfully integrated in containers](https://github.com/kata-containers/kata-containers).
+
+The most user-friendly OSS alternative for Docker and Docker-Desktop for general use are probably [Podman](https://podman.io/) and [Podman Desktop](https://podman-desktop.io/).
+However, those would be very boring to install and use :). I'm proposing instead a much more 'interesting' approach which also gives a decent
+view at what is really happening under the hood.
+
+We're going to assemble our containerization solution using the following stack:
+- [nerdctl](https://github.com/containerd/nerdctl) as the frontend cli.
+- [containerd](https://github.com/containerd/containerd) as the high-level container runtime.
+- [libcni plugins](https://github.com/containernetworking/plugins) as the network interface for containers (CNI).
+- [crun](https://github.com/containers/crun) as the low-level OCI runtime.
+- [buildkit](https://github.com/moby/buildkit) as the image builder engine.
+- a tad of shell scripting magic as glue.
+
+We're essentially going to 'construct' our containerization platform by putting together different FOSS components like
+a lego: once done, we'll be able to do about 90% of what Docker does and using the same commands we all know and love. The
+remaining 10% is mostly about niche or very recent Docker features which have not been already ported to nerdctl. More on this
+later.
+
+I'm creating this guide using Ubuntu 24, but any Linux distro will do. Basic containerization, sysadmin and Linux knowledge are
+required to understand what the hell I'm talking about. Almost all the commands will require root privileges, so I recommend
+to `sudo su` root directly to simplify your life.
+
+> **Note**: this is NOT *yet another Docker getting started guide*. I'm assuming you already know how to create, build, push, deploy,
+> etc. containers.
+
+## 1. Installing nerdctl
+
+`nerdctl` (short for `containerdctl`... I really do hate the name) is going to be our cli replacement for the `docker`
+and `docker compose` clis. It tries to support most of the docker commands and their behavior but, instead of talking
+to the docker daemon, it communicates directly to containerd using its socket.
+
+Install nerdctl from official GitHub release:
+```bash
+NERDCTL_VERSION=2.0.3
+wget "https://github.com/containerd/nerdctl/releases/download/v$NERDCTL_VERSION/nerdctl-$NERDCTL_VERSION-linux-amd64.tar.gz"
+tar -xvf "nerdctl-$NERDCTL_VERSION-linux-amd64.tar.gz" && rm "nerdctl-$NERDCTL_VERSION-linux-amd64.tar.gz" containerd-rootless-setuptool.sh containerd-rootless.sh
+mv nerdctl /usr/local/bin
+```
+
+Testing installation went well:
+```bash
+root@ubuntu:~# nerdctl --version
+nerdctl version 2.0.3
+```
+
+If you check the help page for nerdctl (`nerdctl -h`) you'll see that it looks exactly as docker.
+
+Running `nerdctl ps` will error-out saying containerd is not running:
+```bash
+root@ubuntu:~# nerdctl ps
+FATA[0000] cannot access containerd socket "/run/containerd/containerd.sock": no such file or directory
+```
+
+## 2. Installing Containerd
+
+`containerd` is essentially the container manager on your OS: when you issue a command to start a container, the command
+will go to containerd which calls and coordinates other parties necessary to make it happen. The containerd daemon exposes
+a UNIX socket, generally found at `/run/containerd/containerd.sock`, for sending and receiving commands.
+
+I'm following the official [install doc here](https://github.com/containerd/containerd/blob/main/docs/getting-started.md).
+
+Install containerd from official GitHub release:
+```bash
+CONTAINERD_VERSION=2.0.3 # note: it's just a coincidence that both containerd and nerdctl have the exactly same version as of this article... what are the chances?
+wget "https://github.com/containerd/containerd/releases/download/v$CONTAINERD_VERSION/containerd-$CONTAINERD_VERSION-linux-amd64.tar.gz"
+tar Cxzvf /usr/local "containerd-$CONTAINERD_VERSION-linux-amd64.tar.gz" && rm "containerd-$CONTAINERD_VERSION-linux-amd64.tar.gz"
+```
+
+Download and install the systemd service unit for containerd:
+```bash
+mkdir -p /usr/local/lib/systemd/system
+wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
+```
+
+> **Note**: since containerd is also used by Docker, the official docker install procedure can be followed instead: when you
+> arrive at the docker CLI/Desktop installation part, omit them and just install containerd (e.g. `apt-get install containerd`
+> on Debian based distros) and nothing else. This way will also automatically install the systemd service unit.
+
+To start the containerd daemon:
+```bash
+systemctl daemon-reload
+systemctl enable --now containerd
+```
+
+systemd should now report `containerd.service` as up-and-running and you should see its UNIX socket on the filesystem:
+```bash
+root@ubuntu:~# file /run/containerd/containerd.sock
+/run/containerd/containerd.sock: socket
+```
+
+now, if we try listing our containers again with nerdctl:
+```bash
+root@ubuntu:~# nerdctl ps
+CONTAINER ID    IMAGE    COMMAND    CREATED    STATUS    PORTS    NAMES
+```
+
+It works! let's try something more useful:
+```bash
+root@ubuntu:~# nerdctl run --rm -it valkey/valkey:8-alpine
+docker.io/valkey/valkey:8-alpine:                                                 resolved       |++++++++++++++++++++++++++++++++++++++|
+index-sha256:0fae58181c223280867e8b6d9d5fa29fca507770aeb6819f36d059cab73fa2fd:    done           |++++++++++++++++++++++++++++++++++++++|
+manifest-sha256:f5f97a2001548608db28e3e9725db9d4ac2a81cddea9cc5ddf9fed327c9f3417: done           |++++++++++++++++++++++++++++++++++++++|
+config-sha256:17397f8e91fc9d6aba5ac6481308e204ffb8598aaf7d64f34c7aed3a807d2c95:   done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:a2425531abfa84286fdfaad481a29788b64521b1d699ca1fdf487066be82ed72:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:44c748e4cf23711bb0bfccd52db7c3381d7ad776208a21662d70e1bcc600a95a:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:07299a7518cb9901bdecc48c6b26922911e9c1ea737142e6e6051596c17f84fd:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:db313a71be85a4e2f1f858f3ea37a97d86ceb448b0cce3628b713c493ab8a985:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:6de4eed58048ab42345742413e8052fc0946d77a11dbf8a79691101bf8a4aabe:    done           |++++++++++++++++++++++++++++++++++++++|
+layer-sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1:    done           |++++++++++++++++++++++++++++++++++++++|
+elapsed: 16.2s                                                                    total:  15.4 M (973.0 KiB/s)
+FATA[0016] failed to verify networking settings: failed to create default network: needs CNI plugin "bridge" to be installed in CNI_PATH ("/opt/cni/bin"), see https://github.com/containernetworking/plugins/releases: exec: "/opt/cni/bin/bridge": stat /opt/cni/bin/bridge: no such file or directory
+```
+
+:'(
+
+## 3. Installing the container network interface (CNI)
+
+Before a container is started, the container runtime needs to create a networking layer for the container to attach to.
+A CNI is basically a network abstraction which allows the container runtime to manage networks without having to deal
+with the OS directly.
+
+containerd supports CNI via a plugin system, so we just need to a CNI plugin which supports the `bridge` network.
+
+```bash
+CNI_VERSION=1.6.2
+wget "https://github.com/containernetworking/plugins/releases/download/v$CNI_VERSION/cni-plugins-linux-amd64-v$CNI_VERSION.tgz"
+mkdir -p /opt/cni/bin
+tar Cxzvf /opt/cni/bin "cni-plugins-linux-amd64-v$CNI_VERSION.tgz" && rm "cni-plugins-linux-amd64-v$CNI_VERSION.tgz"
+```
+
+Excellent, now we try again running out valkey instance:
+```bash
+root@ubuntu:~# nerdctl run --rm -it valkey/valkey:8-alpine
+FATA[0000] failed to create shim task: OCI runtime create failed: unable to retrieve OCI runtime error (open /run/containerd/io.containerd.runtime.v2.task/default/91030e45fbcb71fdecfec4c8173314a445c8cea080168e13d171af6e5e97e91b/log.json: no such file or directory): exec: "runc": executable file not found in $PATH: <nil>
+```
+
+<figure>
+  <img src="/memes/different-error-meme.jpg" alt="Progress!"/>
+  <figcaption>(Sorry for the eye burns)</figcaption>
+</figure>
+
+Despite the error, we are getting there.
+
+## 4. Installing crun
+
+Just like a CNI is a networking abstraction for the container runtime, we need a similar thing for the containers.
+A container runtime does not know how to spawn/delete/etc a container: the actual low-level machinery which tells the
+OS to "create a container", make it isolated, etc. are offloaded to another component. I'm still not really sure how
+to call the categorization of these components, but I've seen them called "OCI runtime" a few times, so I'm going to stick
+with that (OCI is the specification which defines containers formats. See https://opencontainers.org/).
+
+`runc` and `crun` are 2 popular choices for the job: runc is written in go and is installed by docker as default, while
+crun is a relatively newer implementation written in C to improve containers startup and reduce memory footprint.
+
+I'm going with crun for no particular reason other than it's not the default, really.
+
+To install crun:
+```bash
+CRUN_VERSION=1.20
+wget "https://github.com/containers/crun/releases/download/$CRUN_VERSION/crun-$CRUN_VERSION-linux-amd64" -O /usr/local/bin/runc
+chmod +x /usr/local/bin/runc
+```
+
+If you noticed, we did something sneaky: we installed crun as a binary named runc. Do not worry, its perfectly fine and
+no house will catch fire after doing this. This again works because the implementations follow the same
+[OCI specification](https://opencontainers.org/) and this makes them interchangeable (kind of). The cleaner installation
+option would have been to name the binary crun and edit containerd config to tell it to use it as the default OCI runtime.
+
+Testing correct installation:
+```bash
+root@ubuntu:~# runc -v
+crun version 1.20
+commit: 9c9a76ac11994701dd666c4f0b869ceffb599a66
+rundir: /run/crun
+spec: 1.0.0
++SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +CRIU +YAJL
+```
+
+Also, unlike all other components but nerdctl, the OCI runtime is just a human friendly cli without other dependencies and thus
+can be used to manage containers lifecycle manually. It's low-level but can be done as long as you don't expect networking and
+other fancy stuff to work out of the box.
+
+Let's retry a third time:
+```bash
+root@ubuntu:~# nerdctl run --rm -it valkey/valkey:8-alpine
+1:C 16 Mar 2025 21:49:20.216 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+1:C 16 Mar 2025 21:49:20.216 * oO0OoO0OoO0Oo Valkey is starting oO0OoO0OoO0Oo
+1:C 16 Mar 2025 21:49:20.216 * Valkey version=8.0.2, bits=64, commit=00000000, modified=0, pid=1, just started
+1:C 16 Mar 2025 21:49:20.216 # Warning: no config file specified, using the default config. In order to specify a config file use valkey-server /path/to/valkey.conf
+1:M 16 Mar 2025 21:49:20.217 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+1:M 16 Mar 2025 21:49:20.217 * monotonic clock: POSIX clock_gettime
+                .+^+.
+            .+#########+.
+        .+########+########+.           Valkey 8.0.2 (00000000/0) 64 bit
+    .+########+'     '+########+.
+ .########+'     .+.     '+########.    Running in standalone mode
+ |####+'     .+#######+.     '+####|    Port: 6379
+ |###|   .+###############+.   |###|    PID: 1
+ |###|   |#####*'' ''*#####|   |###|
+ |###|   |####'  .-.  '####|   |###|
+ |###|   |###(  (@@@)  )###|   |###|          https://valkey.io
+ |###|   |####.  '-'  .####|   |###|
+ |###|   |#####*.   .*#####|   |###|
+ |###|   '+#####|   |#####+'   |###|
+ |####+.     +##|   |#+'     .+####|
+ '#######+   |##|        .+########'
+    '+###|   |##|    .+########+'
+        '|   |####+########+'
+             +#########+'
+                '+v+'
+
+1:M 16 Mar 2025 21:49:20.220 * Server initialized
+1:M 16 Mar 2025 21:49:20.220 * Ready to accept connections tcp
+```
+
+How about using a compose file?
+```bash
+cat > docker-compose.yml << EOF
+services:
+  valkey:
+    image: valkey/valkey:8-alpine
+    ports:
+      - "6379:6379"
+EOF
+nerdctl compose up -d
+```
+
+```bash
+root@ubuntu:~# nerdctl compose ps
+NAME             IMAGE                               COMMAND                   SERVICE    STATUS     PORTS
+root-valkey-1    docker.io/valkey/valkey:8-alpine    "docker-entrypoint.s…"    valkey     running    0.0.0.0:6379->6379/tcp
+```
+
+Everything should be working as expected. So let's try building an image, shall we?
+
+```bash
+root@ubuntu:~# echo 'FROM valkey/valkey:8-alpine' > Dockerfile
+root@ubuntu:~# nerdctl build . -t test
+ERRO[0000] `buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit  error="failed to ping to host unix:///run/buildkit-default/buildkitd.sock: exec: \"buildctl\": executable file not found in $PATH\nfailed to ping to host unix:///run/buildkit/buildkitd.sock: exec: \"buildctl\": executable file not found in $PATH"
+FATA[0000] no buildkit host is available, tried 2 candidates: failed to ping to host unix:///run/buildkit-default/buildkitd.sock: exec: "buildctl": executable file not found in $PATH
+failed to ping to host unix:///run/buildkit/buildkitd.sock: exec: "buildctl": executable file not found in $PATH
+```
+
+Here we go again: the image building is offloaded to yet another component.
+
+## 5. Installing buildkit
+
+`buildkit` is the second generation image builder in use by Docker. It's faster, can build pieces of the
+same Dokerfile concurrently, and it's open-source. Nothing too fancy here; it's just a tool to convert a Dockerfile
+to an image artefact.
+
+Just like for containerd, buildkit is a daemon process which exposes a UNIX socket.
+
+buildkit installation:
+```bash
+BUILDKIT_VERSION=0.20.1
+wget "https://github.com/moby/buildkit/releases/download/v$BUILDKIT_VERSION/buildkit-v$BUILDKIT_VERSION.linux-amd64.tar.gz"
+tar Cxzvf /usr/local "buildkit-v$BUILDKIT_VERSION.linux-amd64.tar.gz" && rm "buildkit-v$BUILDKIT_VERSION.linux-amd64.tar.gz"
+```
+
+Run buildkit with systemd:
+```bash
+cat > /usr/local/lib/systemd/system/buildkitd.service << EOF
+[Unit]
+Description=BuildKit Daemon
+Documentation=https://github.com/moby/buildkit
+Wants=network-online.target
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/buildkitd
+TimeoutSec=0
+RestartSec=10
+Restart=always
+
+StartLimitBurst=3
+StartLimitInterval=60s
+
+# Comment TasksMax if your systemd version does not support it.
+# Only systemd 226 and above support this option.
+TasksMax=infinity
+EOF
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable --now buildkitd
+```
+
+Testing our new builder again:
+```bash
+root@ubuntu:~# nerdctl build . -t test
+[+] Building 25.1s (5/5)
+[+] Building 25.4s (5/5)
+[+] Building 25.8s (5/5) FINISHED
+ => [internal] load build definition from Dockerfile                                                                                                   1.2s
+ => => transferring dockerfile: 65B                                                                                                                    0.0s
+ => [internal] load metadata for docker.io/valkey/valkey:8-alpine                                                                                      3.8s
+ => [internal] load .dockerignore                                                                                                                      0.5s
+ => => transferring context: 2B                                                                                                                        0.0s
+ => [1/1] FROM docker.io/valkey/valkey:8-alpine@sha256:0fae58181c223280867e8b6d9d5fa29fca507770aeb6819f36d059cab73fa2fd                               13.9s
+ => => resolve docker.io/valkey/valkey:8-alpine@sha256:0fae58181c223280867e8b6d9d5fa29fca507770aeb6819f36d059cab73fa2fd                                0.3s
+ => => sha256:44c748e4cf23711bb0bfccd52db7c3381d7ad776208a21662d70e1bcc600a95a 519B / 519B                                                             2.2s
+ => => sha256:db313a71be85a4e2f1f858f3ea37a97d86ceb448b0cce3628b713c493ab8a985 193.62kB / 193.62kB                                                     2.1s
+ => => sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870 3.64MB / 3.64MB                                                         3.0s
+ => => sha256:a2425531abfa84286fdfaad481a29788b64521b1d699ca1fdf487066be82ed72 951B / 951B                                                             1.5s
+ => => sha256:07299a7518cb9901bdecc48c6b26922911e9c1ea737142e6e6051596c17f84fd 12.49MB / 12.49MB                                                       7.5s
+ => => sha256:6de4eed58048ab42345742413e8052fc0946d77a11dbf8a79691101bf8a4aabe 100B / 100B                                                             0.7s
+ => => sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B                                                               0.9s
+ => exporting to docker image format                                                                                                                  13.6s
+ => => exporting layers                                                                                                                                0.0s
+ => => exporting manifest sha256:f5f97a2001548608db28e3e9725db9d4ac2a81cddea9cc5ddf9fed327c9f3417                                                      0.0s
+ => => exporting config sha256:17397f8e91fc9d6aba5ac6481308e204ffb8598aaf7d64f34c7aed3a807d2c95                                                        0.0s
+ => => sending tarball
+```
+
+Perfect!
+
+### 5.1 Gotchas
+
+To be fair, not really perfect but still good. You may notice a couple of things while building images (especially
+much larges ones):
+1. it gets stuck on the line ` => => sending tarball` for a good while.
+2. the disk free space goes down quickly when building a lot of images.
+
+The problem is that the final image layer gets duplicated and persisted on disk twice:
+- once in buildkit cache besides the other intermediate build layers.
+- once as the final tagged artefact visible with `nerdctl list images` in containerd.
+
+This is because containerd and buildkit are 2 isolated processes and do not share the image layers storage. The `sending tarball`
+line, means that buildkit has:
+1. exported the final image layer as a tarball.
+2. is sending such tarball to containerd via its socket.
+3. containerd is unpacking and loading the tarball into its own image layer storage.
+
+This process can be quite slow when images above 1G are generated and depending on hardware. Unfortunately,
+I couldn't really find a solution for this. Docker, somehow, manages to avoid this problem despite having an extra daemon
+process (dockerd), but I couldn't figure out how (also, we do not have dockerd source code to inspect).
+
+The good news, is that the point about the disk filling up quicker should be automatically resolved by buildkit built-in
+cache garbage collector. So there shouldn't be problems there; the gc can also be fine-tuned to be more aggressive, if
+desired.
+
+## 6. Post-installation quality of life
+
+Technically we are done, but there are still some rough edges to smooth around user experience. Let's see...
+
+### 6.1 Allow `nerdctl` usage from non-root users
+
+We can get away with a simple shell alias for non-root users:
+```bash
+echo 'alias nerdctl="sudo nerdctl"' >> "$HOME/.bashrc"
+exec bash
+```
+
+Testing alias:
+```bash
+user@ubuntu:~$ nerdctl ps
+CONTAINER ID    IMAGE    COMMAND    CREATED    STATUS    PORTS    NAMES
+```
+
+### 6.2 Alias `nerdctl` to `docker`
+
+The problem with the simple alias in `.bashrc`, is that we need to ensure the line is present for each user in our ubuntu machine.
+This can ge tedious and easily forgotten. A better solution, in my opinion, is to create a simple shell script and put the
+sudo check logic in there.
+
+A side effect of this solution is we can also name the script `docker` which will bridge our 'docker replacement' objective
+we set ourselves at the beginning.
+
+```bash
+cat > /usr/local/bin/docker << 'EOF'
+#!/bin/sh
+
+if [ "$(id -u)" -eq "0" ]; then
+    SUDO=
+else
+    SUDO=sudo
+fi
+
+$SUDO nerdctl $@
+exit $?
+EOF
+chmod +x /usr/local/bin/docker
+```
+
+and now we can run `docker` as both root and non-root users without problems:
+```bash
+# as root
+root@ubuntu:~# docker image ls
+REPOSITORY       TAG         IMAGE ID        CREATED        PLATFORM       SIZE       BLOB SIZE
+test             latest      f5f97a200154    3 weeks ago    linux/amd64    41.23MB    16.34MB
+valkey/valkey    8-alpine    0fae58181c22    3 weeks ago    linux/amd64    41.23MB    16.34MB
+# as non-root
+user@ubuntu:~$ docker image ls
+REPOSITORY       TAG         IMAGE ID        CREATED        PLATFORM       SIZE       BLOB SIZE
+test             latest      f5f97a200154    3 weeks ago    linux/amd64    41.23MB    16.34MB
+valkey/valkey    8-alpine    0fae58181c22    3 weeks ago    linux/amd64    41.23MB    16.34MB
+```
+
+## 7. Final thoughts
+
+We essentially assembled our own containerization platform like Lego bricks. Could you use it in production? Well,
+most likely yes, but consider the following: It **will** be a pain to keep updated and working the stack. There
+are many moving part to keep track of, which versions are compatible with which, breaking changes, and potential bugs in
+new releases.
+
+Given Docker, Podman and Kubernetes' popularity, I'm not sure going down this rabbit hole is worth it for production workloads.
+
+This is still a nice learning experience, a bit like 'building your Linux kernel from scratch' if you will.
+
+## 8. What's next
+
+When I originally assembled this stack, was because Kubernetes had removed Docker support, but I wanted to keep running
+my clusters on top of Docker in order to keep sharing local images for both Kubernetes and composes. A nice bonus, was
+that by doing `docker ps` and company, you could see and inspect all running containers created by Kubernetes.
+
+So, just saying, but it may be fun to try and run Kubernetes on top of this :)
