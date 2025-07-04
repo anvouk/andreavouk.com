@@ -16,6 +16,7 @@
     "@astrojs/rss": "^4.0.11",
     "@astrojs/sitemap": "^3.2.1",
     "astro": "^5.4.1",
+    "astro-expressive-code": "^0.41.2",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
@@ -24,6 +25,7 @@
     "pretty-quick": "^4.0.0"
   },
   "volta": {
-    "node": "22.14.0"
+    "node": "24.3.0",
+    "pnpm": "10.12.4"
   }
 }
