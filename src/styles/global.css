@@ -76,8 +76,8 @@ blockquote {
   margin: 1em 0;
   padding: 0.8em 0 0.01em 0.6em;
   border-left: 0.15rem solid var(--secondary-details-color);
-  border-top-right-radius: 0.3em;
-  border-bottom-right-radius: 0.3em;
+  border-top-right-radius: 0.3rem;
+  border-bottom-right-radius: 0.3rem;
   background-color: var(--background-color-code-4);
 }
 
@@ -113,7 +113,7 @@ i a {
   display: block;
   padding: inherit;
   margin: auto;
-  border-radius: 0.3em;
+  border-radius: 0.3rem;
 }
 
 figure img {
@@ -123,7 +123,7 @@ figure img {
   display: block;
   padding: inherit;
   margin: auto;
-  border-radius: 0.3em;
+  border-radius: 0.3rem;
 }
 
 figcaption {
