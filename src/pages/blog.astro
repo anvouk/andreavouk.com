@@ -1,7 +1,7 @@
 ---
 import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
-import { SITE_TITLE, SITE_DESCRIPTION } from "../config";
+import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
 
 // Use Astro.glob() to fetch all posts, and then sort them by date.
 const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
@@ -32,6 +32,11 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
     ul li a:visited {
       color: #8e32dc;
     }
+
+    .tag {
+      color: var(--tags-color);
+      word-spacing: 0.4rem;
+    }
   </style>
 </head>
 <body>
@@ -48,7 +53,10 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
               day: "numeric",
             })}
           </time>
-          <a href={post.url}>{post.frontmatter.title}</a>
+          <div>
+            <a href={post.url}>{post.frontmatter.title}</a>
+            <p class="tag">{post.frontmatter.tags.map((tag: string) => `#${tag} `)}</p>
+          </div>
         </li>
       ))}
     </ul>
