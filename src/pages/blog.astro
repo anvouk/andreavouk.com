@@ -32,6 +32,11 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
     ul li a:visited {
       color: #8e32dc;
     }
+
+    .tag {
+      color: var(--tags-color);
+      word-spacing: 0.4rem;
+    }
   </style>
 </head>
 <body>
@@ -48,7 +53,10 @@ const posts = (await Astro.glob("./blog/**/*.{md,mdx}")).sort(
               day: "numeric",
             })}
           </time>
-          <a href={post.url}>{post.frontmatter.title}</a>
+          <div>
+            <a href={post.url}>{post.frontmatter.title}</a>
+            <p class="tag">{post.frontmatter.tags.map((tag: string) => `#${tag} `)}</p>
+          </div>
         </li>
       ))}
     </ul>
