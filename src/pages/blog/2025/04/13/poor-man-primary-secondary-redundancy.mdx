@@ -1,0 +1,175 @@
+---
+layout: "../../../../../layouts/BlogPost.astro"
+title: "Poor man's primary-secondary redundancy with DNS"
+description: "Replace Docker with nerdctl stack and keep cli compatibility"
+pubDate: "2025/04/13"
+tags: ["Linux", "Infrastructure", "Redundancy"]
+---
+
+import { Image } from 'astro:assets';
+import quickDnsRedundancyImg from './_assets/quick-dns-redundancy.png';
+
+## Table Of Contents
+
+- [Intro](#intro)
+- [The problem](#the-problem)
+- [Discarded solutions](#discarded-solutions)
+- [What I ended up doing](#what-i-ended-up-doing)
+  - [Show me the code](#show-me-the-code)
+- [Interesting fact](#interesting-fact)
+- [Tradeoffs](#tradeoffs)
+- [Conclusion](#conclusion)
+
+## Intro
+
+I'd like to share an interesting alternative I found for setting up a primary-secondary manual disaster recovery solution
+for a customer and while short on time. It's actually really simple and nothing revolutionary, but It may be overlooked for
+more sophisticated and complex alternatives.
+
+## The problem
+
+So, I recently found myself having to implement a disaster recovery solution between 2 VMs in a customer's network for
+an existing product: many IoT devices needed to connect to a server for centralization, and in case the
+server died, they needed to be able to switch to the secondary with as minimal human intervention as possible.
+The customer here wanted complete control on when the disaster recovery switch happened, but deemed having to update the
+configuration of every IoT device on the fly too risky and error-prone during an emergency.
+Also, these devices did not have any application level redundancy system in place.
+
+In short: we needed a 'manual switch' that a technician could flip to redirect the IoT traffic to the secondary and back.
+The human users would simply reach the secondary with their browsers by manually changing the URL when told so.
+
+## Discarded solutions
+
+1. The first idea was to modify the IoT devices to expose a flag of some sort that would tell the software to give up
+trying to connect to the primary and instead connect to the secondary. This was almost immediately discarded because
+it would require too much time to implement, test and deploy to all devices on the field. Also, there could be network
+problems while trying to signal the devices.
+
+2. Deploy [Keepalived](https://keepalived.readthedocs.io/en/latest/introduction.html) on the 2 VMs: this was the most
+promising solution, but there were complications: the VMs were on completely different networks and could not talk to
+each other: It was [still technically possible to use keepalived](https://serverfault.com/a/1088477) assuming the firewall
+could be opened to allow traffic between the 2 networks, but It looked a bit sketchy. It also involved
+having to talk to people for the firewall configuration, so definitely not fast and not a fan :)
+
+## What I ended up doing
+
+In a word: **DNS**.
+
+Here's the idea in a diagram:
+
+<Image src={quickDnsRedundancyImg} alt="DNS redundancy diagram" class="img-70" />
+
+I'm essentially having the devices resolve the DNS for the server except there are 2 DNS servers, and they will
+return a different IP address depending on which one is responding.
+
+This can only work under 3 conditions:
+1. The DNS resolution is not cached by the OS but performed every time.
+2. Only 1 of the 2 DNS servers is reachable by the OS at-a-time (more on this later).
+3. The DNS port 53 in UDP is reachable by the IoT devices.
+
+Luckily for me, Linux does not cache by default DNS entries and all the IoT devices ran a Linux OS and with configurable
+DNS nameservers. As for the second condition, I just had to make sure that only 1 of the 2 DNS servers was up at any
+given time, and since the switch was to be a manual operation, I just had to make a script that would flip the status of
+the DNS servers on the 2 VMs.
+As for point n. 3, the firewall rules did not block the UDP traffic on port 53 from the IoT devices (yay).
+
+### Show me the code
+
+The workload on the 2 VMs was already running inside containers, so I spin-up a new instance of [CoreDNS](https://coredns.io/)
+in a docker compose:
+
+`docker-compose.yml`:
+```yaml
+services:
+  coredns:
+    image: coredns/coredns:1.11.1
+    restart: always
+    command:
+      - -conf
+      - /Corefile
+    ports:
+      - "53:53/udp"
+    volumes:
+      - ./coredns/Corefile:/Corefile:ro
+      - ./coredns/dns_entries:/dns_entries:ro
+```
+
+> **Note**: You may have `systemd-resolved` already using port 53 on Ubuntu for no reason other than being annoying.
+> See [how to free it up](https://unix.stackexchange.com/a/676977) or you can use it instead of CoreDNS.
+
+`./coredns/Corefile`:
+```
+service.local {
+  log
+  file /dns_entries
+  errors
+}
+```
+
+`./coredns/dns_entries` in VM 1 (primary):
+```
+$ORIGIN service.local.
+@	3600 IN	SOA sns.dns.icann.org. noc.dns.icann.org. 2017042745 7200 3600 1209600 3600
+	3600 IN NS a.iana-servers.net.
+	3600 IN NS b.iana-servers.net.
+
+awesome     IN A     10.10.10.11
+```
+
+`./coredns/dns_entries` in VM 2 (secondary):
+```
+$ORIGIN service.local.
+@	3600 IN	SOA sns.dns.icann.org. noc.dns.icann.org. 2017042745 7200 3600 1209600 3600
+	3600 IN NS a.iana-servers.net.
+	3600 IN NS b.iana-servers.net.
+
+awesome     IN A     192.168.10.12
+```
+
+What was left was to update all IoT devices to use the `awesome.service.local` as connection string and the IPs of the
+2 servers as DNS resolvers in `/etc/resolv.conf`:
+```
+nameserver 10.10.10.11
+nameserver 192.168.10.12
+```
+
+While this looks like a lot of work, it was mostly copy-pasting and, after a bit of patience, it was done.
+
+It's also worth noting that, had I went with the `Keepalived` solution, I still would have had
+to change the connection string to use the virtual IP. This way only adds changing the DNS configuration so not that much
+extra work.
+
+## Interesting fact
+
+You may or may not know that Linux resolves DNS entries using the nameservers listed in `/etc/resolv.conf` in order (unless
+`rotate` is set, see [resolv.conf(5)](https://linux.die.net/man/5/resolv.conf)).
+This poses an interesting question: If I put the primary as the first entry and the secondary as the second one,
+would I be able to keep both CoreDNS instances up at the same time without issues?
+
+Well, yes and no: say there is a network blip during the DNS resolution using the first entry, Linux would fallback to the
+second entry after a set timeout and number of retries. While these 2 settings are tunable using the `timeout:n` and
+`attempts:n` flags, I deemed taking the chance of an automatic and unwanted switch-over not great. So keeping both DNS servers
+up at the same time could potentially cause some IoT devices to reconnect to the secondary upon disconnection and vice versa,
+but only under certain conditions. I didn't like the idea, and given there was a lot of traffic on the customer's network,
+keeping only 1 DNS server up at a time was just plain safer.
+
+## Tradeoffs
+
+This brings me about the tradeoffs of this solution:
+1. The connecting devices must run Linux (Windows will cache DNS entries by default, don't know about other OSes)
+2. The connecting devices must support at-least 2 DNS servers as resolvers.
+3. Be careful about timeouts and retries (see `Interesting fact` above as to why).
+
+Another tradeoff is that if someone wanted to move all the IoT devices to the other VM, without the current one being
+down, they would need to flip the switch AND tell the devices to perform a reconnection.
+
+On the flip side, when all the above points are met, this solution is actually extremely simple, does not require code changes,
+and is very reliable.
+
+## Conclusion
+
+As of the time of writing this, the solution above has been working for over 6 months in production. Given it's just DNS
+and a simple up/down script (minus having to disconnect the devices to migrate), I really do not expect surprises. I'll
+update this post if I find any.
+
+Hope someone finds this useful (instead of just GPT bots harvesting data...).
