@@ -26,11 +26,5 @@ const expressiveCodeConfig = expressiveCode({
 export default defineConfig({
   output: 'static',
   site: 'https://andreavouk.com',
-  redirects: {
-    '/': {
-      destination: '/blog',
-      status: 307,
-    },
-  },
   integrations: [sitemap(), expressiveCodeConfig, mdx()]
 });

@@ -12,20 +12,20 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.3.0",
-    "@astrojs/rss": "^4.0.12",
-    "@astrojs/sitemap": "^3.4.1",
-    "astro": "^5.11.0",
-    "astro-expressive-code": "^0.41.2",
-    "sharp": "^0.34.2"
+    "@astrojs/mdx": "^4.3.12",
+    "@astrojs/rss": "^4.0.14",
+    "@astrojs/sitemap": "^3.6.0",
+    "astro": "^5.16.4",
+    "astro-expressive-code": "^0.41.3",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "lefthook": "^1.11.16",
-    "prettier": "^3.6.2",
+    "lefthook": "^2.0.9",
+    "prettier": "^3.7.4",
     "pretty-quick": "^4.2.2"
   },
   "volta": {
     "node": "24.3.0",
-    "pnpm": "10.12.4"
+    "pnpm": "10.25.0"
   }
 }
