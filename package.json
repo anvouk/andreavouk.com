@@ -23,9 +23,5 @@
     "lefthook": "^2.0.9",
     "prettier": "^3.7.4",
     "pretty-quick": "^4.2.2"
-  },
-  "volta": {
-    "node": "24.3.0",
-    "pnpm": "10.25.0"
   }
 }
