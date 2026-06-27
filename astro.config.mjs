@@ -24,7 +24,7 @@ const expressiveCodeConfig = expressiveCode({
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'static',
   site: 'https://andreavouk.com',
+  compressHTML: true,
   integrations: [sitemap(), expressiveCodeConfig, mdx()]
 });

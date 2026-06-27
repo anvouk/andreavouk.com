@@ -2,4 +2,4 @@ pre-commit:
   parallel: false
   commands:
     pretty-quick:
-      run: ./node_modules/pretty-quick/lib/cli.mjs --staged
+      run: $HOME/.asdf/shims/node ./node_modules/pretty-quick/lib/cli.mjs --staged

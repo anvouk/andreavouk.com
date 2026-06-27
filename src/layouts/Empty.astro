@@ -15,16 +15,16 @@ const {
 ---
 
 <html lang="en">
-<head>
-  <BaseHead isArticle=false title={title} description={description} />
-</head>
+  <head>
+    <BaseHead isArticle={false} title={title} description={description} />
+  </head>
 
-<body>
-<Header />
-<main>
-  <article>
-    <slot />
-  </article>
-</main>
-</body>
+  <body>
+    <Header />
+    <main>
+      <article>
+        <slot />
+      </article>
+    </main>
+  </body>
 </html>
